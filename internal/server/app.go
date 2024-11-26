@@ -1,0 +1,114 @@
+package server
+
+import (
+	userGRPC "User/internal/delivery/grpc"
+	"User/internal/models"
+	"User/internal/repository/postgres"
+	"User/internal/usecase"
+	"User/internal/usecase/localstack_usecase"
+	"User/internal/usecase/user_usecase"
+	log_c "User/pkg/logger"
+	"context"
+	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
+	"google.golang.org/grpc"
+	"net"
+	"os"
+	"os/signal"
+	"syscall"
+)
+
+type AppGRPC struct {
+	gRPCServer   *grpc.Server
+	userUseCase  usecase.UserUseCase
+	cloudUseCase usecase.CloudUseCase
+}
+
+func NewAppGRPC(cloudConfig *models.CloudConfig) (*AppGRPC, error) {
+
+	db := initDB()
+
+	repository := postgres.NewUserRepository(db)
+
+	userUseCase := user_usecase.NewUserUseCase(repository)
+
+	awsCfg, err := config.LoadDefaultConfig(context.TODO(),
+		config.WithRegion(cloudConfig.Region),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(cloudConfig.Key, cloudConfig.Secret, "")),
+	)
+	if err != nil {
+		log_c.FatalLogger.Fatalf("failed loading config, %v", err)
+		return nil, err
+	}
+
+	client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+		o.UsePathStyle = true
+		o.BaseEndpoint = aws.String(cloudConfig.EndPoint)
+	})
+
+	localStackUseCase := localstack_usecase.NewLocalstackUseCase(client, cloudConfig)
+
+	gRPCServer := grpc.NewServer()
+
+	userGRPC.Register(gRPCServer, userUseCase, localStackUseCase)
+
+	return &AppGRPC{
+		gRPCServer:   gRPCServer,
+		userUseCase:  userUseCase,
+		cloudUseCase: localStackUseCase,
+	}, nil
+}
+
+func (app *AppGRPC) Run(port string) error {
+
+	listen, err := net.Listen(os.Getenv("APP_GRPC_PROTOCOL"), ":"+port)
+	if err != nil {
+		log_c.ErrorLogger.Printf("Failed to listen: %v", err)
+		return err
+	}
+
+	log_c.InfoLogger.Printf("Starting gRPC server on port %s", port)
+
+	go func() {
+		if err = app.gRPCServer.Serve(listen); err != nil {
+			log_c.FatalLogger.Fatalf("Failed to serve: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
+
+	<-quit
+
+	log_c.InfoLogger.Printf("stopping gRPC server %s", port)
+	app.gRPCServer.GracefulStop()
+
+	return nil
+}
+
+func initDB() *sqlx.DB {
+
+	dsn := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_PORT"),
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_NAME"),
+		os.Getenv("DB_SLLMODE"),
+	)
+
+	db, err := sqlx.Connect(os.Getenv("DB_DRIVER"), dsn)
+	if err != nil {
+		log_c.FatalLogger.Fatalf("Database connection failed: %s", err)
+	}
+
+	log_c.InfoLogger.Println("Successfully connected to db")
+
+	return db
+}
