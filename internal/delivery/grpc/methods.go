@@ -13,8 +13,11 @@ import (
 	"time"
 )
 
+var _ userProtobuf.UserServer = (*UsergRPC)(nil)
+
 type UsergRPC struct {
 	userProtobuf.UnimplementedUserServer
+
 	userUseCase  usecase.UserUseCase
 	cloudUseCase usecase.CloudUseCase
 }
