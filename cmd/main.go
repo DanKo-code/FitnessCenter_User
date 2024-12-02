@@ -3,7 +3,7 @@ package main
 import (
 	"User/internal/models"
 	"User/internal/server"
-	log_c "User/pkg/logger"
+	"User/pkg/logger"
 	"github.com/joho/godotenv"
 	"os"
 )
@@ -11,10 +11,10 @@ import (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		log_c.FatalLogger.Fatalf("Error loading .env file: %s", err)
+		logger.FatalLogger.Fatalf("Error loading .env file: %s", err)
 	}
 
-	log_c.InfoLogger.Printf("Successfully loaded environment variables")
+	logger.InfoLogger.Printf("Successfully loaded environment variables")
 
 	cloudConfig := &models.CloudConfig{
 		EndPoint: os.Getenv("AWS_ENDPOINT"),
@@ -26,11 +26,11 @@ func main() {
 
 	appGRPC, err := server.NewAppGRPC(cloudConfig)
 	if err != nil {
-		log_c.FatalLogger.Fatalf("Error initializing app: %s", err)
+		logger.FatalLogger.Fatalf("Error initializing app: %s", err)
 	}
 
 	err = appGRPC.Run(os.Getenv("APP_PORT"))
 	if err != nil {
-		log_c.FatalLogger.Fatalf("Error running server")
+		logger.FatalLogger.Fatalf("Error running server")
 	}
 }

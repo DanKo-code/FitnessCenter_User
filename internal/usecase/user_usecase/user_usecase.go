@@ -1,9 +1,15 @@
 package user_usecase
 
 import (
+	"User/internal/dtos"
+	customErrors "User/internal/errors"
 	"User/internal/models"
 	"User/internal/repository"
+	"User/pkg/logger"
 	"context"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
+	"time"
 )
 
 type UserUseCase struct {
@@ -14,12 +20,103 @@ func NewUserUseCase(userRepo repository.UserRepository) *UserUseCase {
 	return &UserUseCase{userRepo: userRepo}
 }
 
-func (u *UserUseCase) UpdateUser(ctx context.Context, uuReq *models.User) (*models.User, error) {
+func (u *UserUseCase) UpdateUser(ctx context.Context, cmd *dtos.UpdateUserCommand) (*models.User, error) {
 
-	err := u.userRepo.UpdateUser(ctx, uuReq)
+	err := u.userRepo.UpdateUser(ctx, cmd)
 	if err != nil {
 		return nil, err
 	}
 
-	return uuReq, nil
+	user, err := u.userRepo.GetUserById(ctx, cmd.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (u *UserUseCase) CreateUser(ctx context.Context, cmd *dtos.CreateUserCommand) (*models.User, error) {
+
+	hashedPassword, err := HashPassword(cmd.Password)
+	if err != nil {
+		logger.ErrorLogger.Printf("Error hashing password: %v", err)
+		return nil, err
+	}
+
+	user := &models.User{
+		ID:           uuid.New(),
+		Name:         cmd.Name,
+		Email:        cmd.Email,
+		Role:         cmd.Role,
+		PasswordHash: hashedPassword,
+		Photo:        "",
+		UpdatedTime:  time.Now(),
+		CreatedTime:  time.Now(),
+	}
+
+	createUser, err := u.userRepo.CreateUser(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	return createUser, nil
+}
+
+func (u *UserUseCase) GetUserById(ctx context.Context, id uuid.UUID) (*models.User, error) {
+	user, err := u.userRepo.GetUserById(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (u *UserUseCase) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	user, err := u.userRepo.GetUserByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (u *UserUseCase) CheckPassword(
+	ctx context.Context,
+	cmd *dtos.CheckPasswordCommand,
+) error {
+
+	user, err := u.userRepo.GetUserById(ctx, cmd.UserId)
+	if err != nil {
+		return err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(cmd.Password)); err != nil {
+		logger.ErrorLogger.Printf("Error Invalid Password: %v", err)
+		return customErrors.InvalidPassword
+	}
+
+	return nil
+}
+
+func (u *UserUseCase) DeleteUserById(ctx context.Context, id uuid.UUID) (*models.User, error) {
+
+	user, err := u.userRepo.GetUserById(ctx, id)
+	if err != nil {
+		return nil, customErrors.UserNotFound
+	}
+
+	err = u.userRepo.DeleteUserById(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func HashPassword(password string) (string, error) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashedPassword), nil
 }

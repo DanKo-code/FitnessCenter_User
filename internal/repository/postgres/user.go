@@ -1,9 +1,15 @@
 package postgres
 
 import (
+	"User/internal/dtos"
+	customErrors "User/internal/errors"
 	"User/internal/models"
-	log_c "User/pkg/logger"
+	"User/pkg/logger"
 	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -15,17 +21,101 @@ func NewUserRepository(db *sqlx.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
-func (userRep *UserRepository) UpdateUser(ctx context.Context, user *models.User) error {
-	_, err := userRep.db.NamedExecContext(ctx, `
-		UPDATE "user" 
-		SET name = :name,
-		    email = :email,
-		    role = :role,
-		    photo = :photo,
-		    updated_time = :updated_time
-		WHERE id = :id`, *user)
+func (userRep *UserRepository) UpdateUser(ctx context.Context, cmd *dtos.UpdateUserCommand) error {
+	setFields := map[string]interface{}{}
+
+	if cmd.Name != "" {
+		setFields["name"] = cmd.Name
+	}
+	if cmd.Email != "" {
+		setFields["email"] = cmd.Email
+	}
+	if cmd.Role != "" {
+		setFields["role"] = cmd.Role
+	}
+	if cmd.Photo != "" {
+		setFields["photo"] = cmd.Photo
+	}
+	setFields["updated_time"] = cmd.UpdatedTime
+
+	if len(setFields) == 0 {
+		logger.InfoLogger.Printf("No fields to update for user Id: %v", cmd.Id)
+		return nil
+	}
+
+	query := `UPDATE "user" SET `
+
+	var params []interface{}
+	i := 1
+	for field, value := range setFields {
+		if i > 1 {
+			query += ", "
+		}
+
+		query += fmt.Sprintf(`%s = $%d`, field, i)
+		params = append(params, value)
+		i++
+	}
+	query += fmt.Sprintf(` WHERE id = $%d`, i)
+	params = append(params, cmd.Id)
+
+	_, err := userRep.db.ExecContext(ctx, query, params...)
 	if err != nil {
-		log_c.ErrorLogger.Printf("Error UpdateUser: %v", err)
+		logger.ErrorLogger.Printf("Error UpdateUser: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (userRep *UserRepository) CreateUser(ctx context.Context, user *models.User) (*models.User, error) {
+	_, err := userRep.db.NamedExecContext(ctx, `
+		INSERT INTO "user" (id, name, email, role, password_hash, photo, created_time, updated_time)
+		VALUES (:id, :name, :email, :role, :password_hash, :photo, :created_time, :updated_time)`, *user)
+	if err != nil {
+		logger.ErrorLogger.Printf("Error CreateUser: %v", err)
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (userRep *UserRepository) GetUserById(ctx context.Context, id uuid.UUID) (*models.User, error) {
+	user := &models.User{}
+	err := userRep.db.GetContext(ctx, user, `SELECT id, name, email, role, password_hash, photo, created_time, updated_time FROM "user" WHERE id = $1`, id)
+	if err != nil {
+		logger.ErrorLogger.Printf("Error GetUserById: %v", err)
+
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, customErrors.UserNotFound
+		}
+
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (userRep *UserRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	user := &models.User{}
+	err := userRep.db.GetContext(ctx, user, `SELECT id, name, email, role, password_hash, photo, created_time, updated_time FROM "user" WHERE email = $1`, email)
+	if err != nil {
+		logger.ErrorLogger.Printf("Error GetUserByEmail: %v", err)
+
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, customErrors.UserNotFound
+		}
+
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (userRep *UserRepository) DeleteUserById(ctx context.Context, id uuid.UUID) error {
+	_, err := userRep.db.ExecContext(ctx, `DELETE FROM "user" WHERE id = $1`, id)
+	if err != nil {
+		logger.ErrorLogger.Printf("Error DeleteUserById: %v", err)
 		return err
 	}
 

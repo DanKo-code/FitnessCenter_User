@@ -7,7 +7,7 @@ import (
 	"User/internal/usecase"
 	"User/internal/usecase/localstack_usecase"
 	"User/internal/usecase/user_usecase"
-	log_c "User/pkg/logger"
+	"User/pkg/logger"
 	"context"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -42,7 +42,7 @@ func NewAppGRPC(cloudConfig *models.CloudConfig) (*AppGRPC, error) {
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(cloudConfig.Key, cloudConfig.Secret, "")),
 	)
 	if err != nil {
-		log_c.FatalLogger.Fatalf("failed loading config, %v", err)
+		logger.FatalLogger.Fatalf("failed loading config, %v", err)
 		return nil, err
 	}
 
@@ -68,15 +68,15 @@ func (app *AppGRPC) Run(port string) error {
 
 	listen, err := net.Listen(os.Getenv("APP_GRPC_PROTOCOL"), ":"+port)
 	if err != nil {
-		log_c.ErrorLogger.Printf("Failed to listen: %v", err)
+		logger.ErrorLogger.Printf("Failed to listen: %v", err)
 		return err
 	}
 
-	log_c.InfoLogger.Printf("Starting gRPC server on port %s", port)
+	logger.InfoLogger.Printf("Starting gRPC server on port %s", port)
 
 	go func() {
 		if err = app.gRPCServer.Serve(listen); err != nil {
-			log_c.FatalLogger.Fatalf("Failed to serve: %v", err)
+			logger.FatalLogger.Fatalf("Failed to serve: %v", err)
 		}
 	}()
 
@@ -85,7 +85,7 @@ func (app *AppGRPC) Run(port string) error {
 
 	<-quit
 
-	log_c.InfoLogger.Printf("stopping gRPC server %s", port)
+	logger.InfoLogger.Printf("stopping gRPC server %s", port)
 	app.gRPCServer.GracefulStop()
 
 	return nil
@@ -105,10 +105,10 @@ func initDB() *sqlx.DB {
 
 	db, err := sqlx.Connect(os.Getenv("DB_DRIVER"), dsn)
 	if err != nil {
-		log_c.FatalLogger.Fatalf("Database connection failed: %s", err)
+		logger.FatalLogger.Fatalf("Database connection failed: %s", err)
 	}
 
-	log_c.InfoLogger.Println("Successfully connected to db")
+	logger.InfoLogger.Println("Successfully connected to db")
 
 	return db
 }
