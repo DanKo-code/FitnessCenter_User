@@ -58,7 +58,7 @@ func (u *UsergRPC) CreateUser(
 		return status.Error(codes.InvalidArgument, "user data is empty")
 	}
 
-	castedUserData, ok := userData.(userProtobuf.UserDataForCreate)
+	castedUserData, ok := userData.(*userProtobuf.UserDataForCreate)
 	if !ok {
 		logger.ErrorLogger.Printf("user data is not of type UserProtobuf.UserDataForCreate")
 		return status.Error(codes.InvalidArgument, "user data is not of type UserProtobuf.UserDataForCreate")
