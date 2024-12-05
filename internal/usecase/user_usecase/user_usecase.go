@@ -20,22 +20,10 @@ func NewUserUseCase(userRepo repository.UserRepository) *UserUseCase {
 	return &UserUseCase{userRepo: userRepo}
 }
 
-func (u *UserUseCase) UpdateUser(ctx context.Context, cmd *dtos.UpdateUserCommand) (*models.User, error) {
-
-	err := u.userRepo.UpdateUser(ctx, cmd)
-	if err != nil {
-		return nil, err
-	}
-
-	user, err := u.userRepo.GetUserById(ctx, cmd.Id)
-	if err != nil {
-		return nil, err
-	}
-
-	return user, nil
-}
-
-func (u *UserUseCase) CreateUser(ctx context.Context, cmd *dtos.CreateUserCommand) (*models.User, error) {
+func (u *UserUseCase) CreateUser(
+	ctx context.Context,
+	cmd *dtos.CreateUserCommand,
+) (*models.User, error) {
 
 	hashedPassword, err := HashPassword(cmd.Password)
 	if err != nil {
@@ -62,7 +50,10 @@ func (u *UserUseCase) CreateUser(ctx context.Context, cmd *dtos.CreateUserComman
 	return createUser, nil
 }
 
-func (u *UserUseCase) GetUserById(ctx context.Context, id uuid.UUID) (*models.User, error) {
+func (u *UserUseCase) GetUserById(
+	ctx context.Context,
+	id uuid.UUID,
+) (*models.User, error) {
 	user, err := u.userRepo.GetUserById(ctx, id)
 	if err != nil {
 		return nil, err
@@ -71,7 +62,46 @@ func (u *UserUseCase) GetUserById(ctx context.Context, id uuid.UUID) (*models.Us
 	return user, nil
 }
 
-func (u *UserUseCase) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+func (u *UserUseCase) UpdateUser(
+	ctx context.Context,
+	cmd *dtos.UpdateUserCommand,
+) (*models.User, error) {
+
+	err := u.userRepo.UpdateUser(ctx, cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := u.userRepo.GetUserById(ctx, cmd.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (u *UserUseCase) DeleteUserById(
+	ctx context.Context,
+	id uuid.UUID,
+) (*models.User, error) {
+
+	user, err := u.userRepo.GetUserById(ctx, id)
+	if err != nil {
+		return nil, customErrors.UserNotFound
+	}
+
+	err = u.userRepo.DeleteUserById(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (u *UserUseCase) GetUserByEmail(
+	ctx context.Context,
+	email string,
+) (*models.User, error) {
 	user, err := u.userRepo.GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
@@ -96,21 +126,6 @@ func (u *UserUseCase) CheckPassword(
 	}
 
 	return nil
-}
-
-func (u *UserUseCase) DeleteUserById(ctx context.Context, id uuid.UUID) (*models.User, error) {
-
-	user, err := u.userRepo.GetUserById(ctx, id)
-	if err != nil {
-		return nil, customErrors.UserNotFound
-	}
-
-	err = u.userRepo.DeleteUserById(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	return user, nil
 }
 
 func HashPassword(password string) (string, error) {

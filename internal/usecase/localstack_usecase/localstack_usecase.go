@@ -38,19 +38,6 @@ func (luc *LocalstackUseCase) PutObject(ctx context.Context, object []byte, name
 	return fileURL, nil
 }
 
-func (luc *LocalstackUseCase) DeleteObject(ctx context.Context, name string) error {
-	_, err := luc.client.DeleteObject(ctx, &s3.DeleteObjectInput{
-		Bucket: aws.String(luc.config.Bucket),
-		Key:    aws.String(name),
-	})
-	if err != nil {
-		logger.ErrorLogger.Printf("Failed to delete object: %v", err)
-		return err
-	}
-
-	return nil
-}
-
 func (luc *LocalstackUseCase) GetObjectByName(ctx context.Context, name string) ([]byte, error) {
 	object, err := luc.client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(luc.config.Bucket),
@@ -69,4 +56,17 @@ func (luc *LocalstackUseCase) GetObjectByName(ctx context.Context, name string) 
 	}
 
 	return photo, nil
+}
+
+func (luc *LocalstackUseCase) DeleteObject(ctx context.Context, name string) error {
+	_, err := luc.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(luc.config.Bucket),
+		Key:    aws.String(name),
+	})
+	if err != nil {
+		logger.ErrorLogger.Printf("Failed to delete object: %v", err)
+		return err
+	}
+
+	return nil
 }
