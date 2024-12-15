@@ -128,6 +128,15 @@ func (u *UserUseCase) CheckPassword(
 	return nil
 }
 
+func (u *UserUseCase) GetUsersByIds(ctx context.Context, ids []uuid.UUID) ([]*models.User, error) {
+	resp, err := u.userRepo.GetUsersByIds(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
 func HashPassword(password string) (string, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {

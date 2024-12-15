@@ -3,18 +3,18 @@ module User
 go 1.23.3
 
 require (
-	github.com/DanKo-code/FitnessCenter-Protobuf v0.3.12
+	github.com/DanKo-code/FitnessCenter-Protobuf v0.6.11
 	github.com/aws/aws-sdk-go-v2 v1.32.5
 	github.com/aws/aws-sdk-go-v2/config v1.28.5
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.46
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.68.0
-	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
 	golang.org/x/crypto v0.27.0
 	google.golang.org/grpc v1.68.0
+	google.golang.org/protobuf v1.35.1
 )
 
 require (
@@ -36,5 +36,4 @@ require (
 	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/text v0.18.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
-	google.golang.org/protobuf v1.35.1 // indirect
 )

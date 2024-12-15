@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 )
 
 type UserRepository struct {
@@ -120,4 +121,25 @@ func (userRep *UserRepository) DeleteUserById(ctx context.Context, id uuid.UUID)
 	}
 
 	return nil
+}
+
+func (userRep *UserRepository) GetUsersByIds(ctx context.Context, ids []uuid.UUID) ([]*models.User, error) {
+	if len(ids) == 0 {
+		return []*models.User{}, nil
+	}
+
+	query := `
+		SELECT id, email, role, photo, name, created_time, updated_time
+		FROM "user"
+		WHERE id = ANY($1)
+	`
+
+	var users []*models.User
+
+	err := userRep.db.SelectContext(ctx, &users, query, pq.Array(ids))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get users by ids: %w", err)
+	}
+
+	return users, nil
 }

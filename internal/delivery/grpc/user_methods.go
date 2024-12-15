@@ -337,6 +337,43 @@ func (u *UsergRPC) CheckPassword(
 	return &emptypb.Empty{}, nil
 }
 
+func (u *UsergRPC) GetUsersByIds(
+	ctx context.Context,
+	request *userProtobuf.GetUsersByIdsRequest,
+) (*userProtobuf.GetUsersByIdsResponse, error) {
+
+	var ids []uuid.UUID
+	for _, i2 := range request.UsersIds {
+		ids = append(ids, uuid.MustParse(i2))
+	}
+
+	usersModels, err := u.userUseCase.GetUsersByIds(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	response := &userProtobuf.GetUsersByIdsResponse{
+		UsersObjects: nil,
+	}
+
+	for _, model := range usersModels {
+
+		userObject := &userProtobuf.UserObject{
+			Id:          model.ID.String(),
+			Email:       model.Email,
+			Role:        model.Role,
+			Photo:       model.Photo,
+			Name:        model.Name,
+			CreatedTime: model.CreatedTime.String(),
+			UpdatedTime: model.UpdatedTime.String(),
+		}
+
+		response.UsersObjects = append(response.UsersObjects, userObject)
+	}
+
+	return response, nil
+}
+
 func GetUserData[T any, R any](
 	g *grpc.ClientStreamingServer[T, R],
 	extractUserData func(chunk *T) interface{},

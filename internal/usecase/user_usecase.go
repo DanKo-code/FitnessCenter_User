@@ -15,4 +15,5 @@ type UserUseCase interface {
 
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 	CheckPassword(ctx context.Context, cmd *dtos.CheckPasswordCommand) error
+	GetUsersByIds(ctx context.Context, ids []uuid.UUID) ([]*models.User, error)
 }
