@@ -8,12 +8,14 @@ import (
 	"context"
 	"errors"
 	userProtobuf "github.com/DanKo-code/FitnessCenter-Protobuf/gen/FitnessCenter.protobuf.user"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"io"
+	"reflect"
 	"time"
 )
 
@@ -178,9 +180,9 @@ func (u *UsergRPC) UpdateUser(
 		return status.Error(codes.InvalidArgument, "user data is empty")
 	}
 
-	castedUserData, ok := userData.(userProtobuf.UserDataForUpdate)
+	castedUserData, ok := userData.(*userProtobuf.UserDataForUpdate)
 	if !ok {
-		logger.ErrorLogger.Printf("user data is not of type UserProtobuf.UserDataForCreate")
+		logger.ErrorLogger.Printf("user data is not of type UserProtobuf.UserDataForUpdate")
 		return status.Error(codes.InvalidArgument, "user data is not of type UserProtobuf.UserDataForCreate")
 	}
 
@@ -202,8 +204,14 @@ func (u *UsergRPC) UpdateUser(
 	if userPhoto != nil {
 		previousPhoto, err = u.cloudUseCase.GetObjectByName(context.TODO(), "user/"+cmd.Id.String())
 		if err != nil {
-			logger.ErrorLogger.Printf("Failed to get previos photo from cloud: %v", err)
-			return err
+
+			var respErr *types.NoSuchKey
+			if errors.As(err, &respErr) {
+
+			} else {
+				logger.ErrorLogger.Printf("Failed to get previos photo from cloud: %v", err)
+				return err
+			}
 		}
 
 		url, err := u.cloudUseCase.PutObject(context.TODO(), userPhoto, "user/"+cmd.Id.String())
@@ -395,7 +403,7 @@ func GetUserData[T any, R any](
 			return nil, nil, err
 		}
 
-		if ud := extractUserData(chunk); ud != nil {
+		if ud := extractUserData(chunk); ud != nil && !reflect.ValueOf(ud).IsNil() {
 			userData = ud
 		}
 
