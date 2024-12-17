@@ -22,6 +22,10 @@ func NewUserRepository(db *sqlx.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
+var (
+	clientRole = "client"
+)
+
 func (userRep *UserRepository) UpdateUser(ctx context.Context, cmd *dtos.UpdateUserCommand) error {
 	setFields := map[string]interface{}{}
 
@@ -139,6 +143,23 @@ func (userRep *UserRepository) GetUsersByIds(ctx context.Context, ids []uuid.UUI
 	err := userRep.db.SelectContext(ctx, &users, query, pq.Array(ids))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get users by ids: %w", err)
+	}
+
+	return users, nil
+}
+
+func (userRep *UserRepository) GetClients(ctx context.Context) ([]*models.User, error) {
+	query := `
+		SELECT id, email, role, photo, name, created_time, updated_time
+		FROM "user"
+		WHERE role = $1
+	`
+
+	var users []*models.User
+
+	err := userRep.db.SelectContext(ctx, &users, query, clientRole)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get clients: %w", err)
 	}
 
 	return users, nil

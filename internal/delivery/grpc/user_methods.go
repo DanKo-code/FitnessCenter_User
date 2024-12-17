@@ -382,6 +382,35 @@ func (u *UsergRPC) GetUsersByIds(
 	return response, nil
 }
 
+func (u *UsergRPC) GetClients(ctx context.Context, empty *emptypb.Empty) (*userProtobuf.GetClientsResponse, error) {
+	clients, err := u.userUseCase.GetClients(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var clientObjects []*userProtobuf.UserObject
+	for _, client := range clients {
+
+		clientObject := &userProtobuf.UserObject{
+			Id:          client.ID.String(),
+			Email:       client.Email,
+			Role:        client.Role,
+			Photo:       client.Photo,
+			Name:        client.Name,
+			CreatedTime: client.CreatedTime.String(),
+			UpdatedTime: client.UpdatedTime.String(),
+		}
+
+		clientObjects = append(clientObjects, clientObject)
+	}
+
+	response := &userProtobuf.GetClientsResponse{
+		UserObjects: clientObjects,
+	}
+
+	return response, nil
+}
+
 func GetUserData[T any, R any](
 	g *grpc.ClientStreamingServer[T, R],
 	extractUserData func(chunk *T) interface{},
