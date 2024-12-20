@@ -35,8 +35,6 @@ func NewAppGRPC(cloudConfig *models.CloudConfig) (*AppGRPC, error) {
 
 	repository := postgres.NewUserRepository(db)
 
-	userUseCase := user_usecase.NewUserUseCase(repository)
-
 	awsCfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithRegion(cloudConfig.Region),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(cloudConfig.Key, cloudConfig.Secret, "")),
@@ -52,6 +50,8 @@ func NewAppGRPC(cloudConfig *models.CloudConfig) (*AppGRPC, error) {
 	})
 
 	localStackUseCase := localstack_usecase.NewLocalstackUseCase(client, cloudConfig)
+
+	userUseCase := user_usecase.NewUserUseCase(repository, localStackUseCase)
 
 	gRPCServer := grpc.NewServer()
 

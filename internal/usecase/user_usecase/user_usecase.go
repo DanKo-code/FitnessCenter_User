@@ -5,6 +5,7 @@ import (
 	customErrors "User/internal/errors"
 	"User/internal/models"
 	"User/internal/repository"
+	"User/internal/usecase"
 	"User/pkg/logger"
 	"context"
 	"github.com/google/uuid"
@@ -13,11 +14,18 @@ import (
 )
 
 type UserUseCase struct {
-	userRepo repository.UserRepository
+	userRepo     repository.UserRepository
+	cloudUseCase usecase.CloudUseCase
 }
 
-func NewUserUseCase(userRepo repository.UserRepository) *UserUseCase {
-	return &UserUseCase{userRepo: userRepo}
+func NewUserUseCase(
+	userRepo repository.UserRepository,
+	cloudUseCase usecase.CloudUseCase,
+) *UserUseCase {
+	return &UserUseCase{
+		userRepo:     userRepo,
+		cloudUseCase: cloudUseCase,
+	}
 }
 
 func (u *UserUseCase) CreateUser(
@@ -91,6 +99,11 @@ func (u *UserUseCase) DeleteUserById(
 	}
 
 	err = u.userRepo.DeleteUserById(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	err = u.cloudUseCase.DeleteObject(ctx, "user/"+user.ID.String())
 	if err != nil {
 		return nil, err
 	}
