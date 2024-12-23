@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	userProtobuf "github.com/DanKo-code/FitnessCenter-Protobuf/gen/FitnessCenter.protobuf.user"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -200,21 +199,9 @@ func (u *UsergRPC) UpdateUser(
 	}
 
 	var photoURL string
-	var previousPhoto []byte
+	randomID := uuid.New().String()
 	if userPhoto != nil {
-		previousPhoto, err = u.cloudUseCase.GetObjectByName(context.TODO(), "user/"+cmd.Id.String())
-		if err != nil {
-
-			var respErr *types.NoSuchKey
-			if errors.As(err, &respErr) {
-
-			} else {
-				logger.ErrorLogger.Printf("Failed to get previos photo from cloud: %v", err)
-				return err
-			}
-		}
-
-		url, err := u.cloudUseCase.PutObject(context.TODO(), userPhoto, "user/"+cmd.Id.String())
+		url, err := u.cloudUseCase.PutObject(context.TODO(), userPhoto, "user/"+randomID)
 		photoURL = url
 		if err != nil {
 			logger.ErrorLogger.Printf("Failed to create user photo in cloud: %v", err)
@@ -226,13 +213,6 @@ func (u *UsergRPC) UpdateUser(
 
 	user, err := u.userUseCase.UpdateUser(context.TODO(), cmd)
 	if err != nil {
-
-		_, err := u.cloudUseCase.PutObject(context.TODO(), previousPhoto, "user/"+cmd.Id.String())
-		if err != nil {
-			logger.ErrorLogger.Printf("Failed to set previous photo in cloud: %v", err)
-			return status.Error(codes.Internal, "Failed to create user photo in cloud")
-		}
-
 		return status.Error(codes.Internal, "Failed to create user")
 	}
 
