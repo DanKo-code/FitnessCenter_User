@@ -74,8 +74,9 @@ func (u *UsergRPC) CreateUser(
 	}
 
 	var photoURL string
+	randomID := uuid.New().String()
 	if userPhoto != nil {
-		url, err := u.cloudUseCase.PutObject(context.TODO(), userPhoto, "user/"+cmd.ID.String())
+		url, err := u.cloudUseCase.PutObject(context.TODO(), userPhoto, "user/"+randomID)
 		photoURL = url
 		if err != nil {
 			logger.ErrorLogger.Printf("Failed to create user photo in cloud: %v", err)
@@ -87,15 +88,6 @@ func (u *UsergRPC) CreateUser(
 
 	user, err := u.userUseCase.CreateUser(context.TODO(), cmd)
 	if err != nil {
-
-		if photoURL == "" {
-			err := u.cloudUseCase.DeleteObject(context.TODO(), "user/"+cmd.ID.String())
-			if err != nil {
-				logger.ErrorLogger.Printf("Failed to delete user photo from cloud: %v", err)
-				return status.Error(codes.Internal, "Failed to delete user photo in cloud")
-			}
-		}
-
 		return status.Error(codes.Internal, "Failed to create user")
 	}
 
