@@ -2,6 +2,7 @@ package server
 
 import (
 	userGRPC "User/internal/delivery/grpc"
+	"User/internal/dtos"
 	"User/internal/models"
 	"User/internal/repository/postgres"
 	"User/internal/usecase"
@@ -14,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"google.golang.org/grpc"
@@ -56,6 +58,11 @@ func NewAppGRPC(cloudConfig *models.CloudConfig) (*AppGRPC, error) {
 	gRPCServer := grpc.NewServer()
 
 	userGRPC.Register(gRPCServer, userUseCase, localStackUseCase)
+
+	err = insertAdminUser(userUseCase)
+	if err != nil {
+		return nil, err
+	}
 
 	return &AppGRPC{
 		gRPCServer:   gRPCServer,
@@ -111,4 +118,32 @@ func initDB() *sqlx.DB {
 	logger.InfoLogger.Println("Successfully connected to db")
 
 	return db
+}
+
+func insertAdminUser(userUseCase usecase.UserUseCase) error {
+
+	admins, err := userUseCase.GetAdmins(context.TODO())
+	if err != nil {
+		return err
+	}
+
+	if len(admins) != 0 {
+		return nil
+	}
+
+	createUserCommand := &dtos.CreateUserCommand{
+		ID:       uuid.New(),
+		Name:     "Danila",
+		Email:    "danilakozlyakovsky@gmail.com",
+		Role:     "admin",
+		Photo:    "",
+		Password: "TankiDanik2003",
+	}
+	_, err = userUseCase.CreateUser(context.TODO(), createUserCommand)
+	if err != nil {
+		return err
+	}
+
+	logger.InfoLogger.Printf("Admin successfully inserted")
+	return nil
 }

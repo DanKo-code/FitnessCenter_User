@@ -159,6 +159,15 @@ func (u *UserUseCase) GetClients(ctx context.Context) ([]*models.User, error) {
 	return clients, nil
 }
 
+func (u *UserUseCase) GetAdmins(ctx context.Context) ([]*models.User, error) {
+	admins, err := u.userRepo.GetAdmins(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return admins, nil
+}
+
 func HashPassword(password string) (string, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {

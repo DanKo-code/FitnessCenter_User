@@ -24,6 +24,7 @@ func NewUserRepository(db *sqlx.DB) *UserRepository {
 
 var (
 	clientRole = "client"
+	adminRole  = "admin"
 )
 
 func (userRep *UserRepository) UpdateUser(ctx context.Context, cmd *dtos.UpdateUserCommand) error {
@@ -160,6 +161,23 @@ func (userRep *UserRepository) GetClients(ctx context.Context) ([]*models.User, 
 	err := userRep.db.SelectContext(ctx, &users, query, clientRole)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get clients: %w", err)
+	}
+
+	return users, nil
+}
+
+func (userRep *UserRepository) GetAdmins(ctx context.Context) ([]*models.User, error) {
+	query := `
+		SELECT id, email, role, photo, name, created_time, updated_time
+		FROM "user"
+		WHERE role = $1
+	`
+
+	var users []*models.User
+
+	err := userRep.db.SelectContext(ctx, &users, query, adminRole)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admins: %w", err)
 	}
 
 	return users, nil
