@@ -8,8 +8,10 @@ import (
 	"User/internal/usecase"
 	"User/pkg/logger"
 	"context"
+	"fmt"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+	"strings"
 	"time"
 )
 
@@ -103,7 +105,17 @@ func (u *UserUseCase) DeleteUserById(
 		return nil, err
 	}
 
-	err = u.cloudUseCase.DeleteObject(ctx, "user/"+user.ID.String())
+	prefix := "user/"
+	index := strings.Index(user.Photo, prefix)
+	var s3PhotoKey string
+	if index != -1 {
+		s3PhotoKey = user.Photo[index+len(prefix):]
+	} else {
+		logger.ErrorLogger.Printf("Prefix not found")
+		return nil, fmt.Errorf("prefix not found")
+	}
+
+	err = u.cloudUseCase.DeleteObject(ctx, "user/"+s3PhotoKey)
 	if err != nil {
 		return nil, err
 	}
