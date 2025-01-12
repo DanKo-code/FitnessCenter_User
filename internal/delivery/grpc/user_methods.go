@@ -242,6 +242,8 @@ func (u *UsergRPC) DeleteUserById(
 		return nil, err
 	}
 
+	logger.DebugLogger.Printf("deletedUser: %v\n", deletedUser)
+
 	userObject := &userProtobuf.UserObject{
 		Id:          deletedUser.ID.String(),
 		Email:       deletedUser.Email,

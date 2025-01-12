@@ -105,19 +105,21 @@ func (u *UserUseCase) DeleteUserById(
 		return nil, err
 	}
 
-	prefix := "user/"
-	index := strings.Index(user.Photo, prefix)
-	var s3PhotoKey string
-	if index != -1 {
-		s3PhotoKey = user.Photo[index+len(prefix):]
-	} else {
-		logger.ErrorLogger.Printf("Prefix not found")
-		return nil, fmt.Errorf("prefix not found")
-	}
+	if user.Photo != "" {
+		prefix := "user/"
+		index := strings.Index(user.Photo, prefix)
+		var s3PhotoKey string
+		if index != -1 {
+			s3PhotoKey = user.Photo[index+len(prefix):]
+		} else {
+			logger.ErrorLogger.Printf("Prefix not found")
+			return nil, fmt.Errorf("prefix not found")
+		}
 
-	err = u.cloudUseCase.DeleteObject(ctx, "user/"+s3PhotoKey)
-	if err != nil {
-		return nil, err
+		err = u.cloudUseCase.DeleteObject(ctx, "user/"+s3PhotoKey)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return user, nil
