@@ -15,6 +15,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"io"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -185,7 +186,7 @@ func (u *UsergRPC) UpdateUser(
 		UpdatedTime: time.Now(),
 	}
 
-	_, err = u.userUseCase.GetUserById(context.TODO(), uuid.MustParse(castedUserData.Id))
+	existingUser, err := u.userUseCase.GetUserById(context.TODO(), uuid.MustParse(castedUserData.Id))
 	if err != nil {
 		return status.Error(codes.NotFound, "user not found")
 	}
@@ -193,6 +194,30 @@ func (u *UsergRPC) UpdateUser(
 	var photoURL string
 	randomID := uuid.New().String()
 	if userPhoto != nil {
+
+		if existingUser.Photo != "" {
+			prefix := "user/"
+			index := strings.Index(existingUser.Photo, prefix)
+			var s3PhotoKey string
+			if index != -1 {
+				s3PhotoKey = existingUser.Photo[index+len(prefix):]
+			} else {
+				logger.ErrorLogger.Printf("Prefix not found")
+			}
+
+			exists, err := u.cloudUseCase.ObjectExists(context.TODO(), "user/"+s3PhotoKey)
+			if err != nil {
+				return status.Error(codes.Internal, "can't find previous photo meta")
+			}
+
+			if exists {
+				err := u.cloudUseCase.DeleteObject(context.TODO(), "user/"+s3PhotoKey)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
 		url, err := u.cloudUseCase.PutObject(context.TODO(), userPhoto, "user/"+randomID)
 		photoURL = url
 		if err != nil {
